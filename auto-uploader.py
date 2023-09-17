@@ -47,7 +47,7 @@ directory_to_watch = config.get('path_to_watch', '')
 class MyGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.geometry("600x800")
+        self.geometry("600x1000")
         self.title("Automatic Image Uploader for ImgBB by WillAx")
 
         config = self.config = load_config('config.json')
@@ -114,6 +114,7 @@ class MyGUI(tk.Tk):
         # UPLOAD
         upload_section_frame = tk.Frame(self, padx=10, pady=10)
         upload_section_frame.pack(fill='x')
+        upload_section_frame.columnconfigure(0, weight=0)
 
         auto_upload_frame = tk.Frame(upload_section_frame, padx=10, pady=10)
         auto_upload_frame.grid(row=0, sticky=tk.W)
@@ -139,14 +140,22 @@ class MyGUI(tk.Tk):
         recursive_checkbox = tk.Checkbutton(recursive_frame, variable=self.recursive_var,onvalue=True, offvalue=False, command=self.recursive_checkbox_changed)
         recursive_checkbox.grid(row=0, column=0, sticky=tk.W)
 
+        file_listbox = tk.Listbox(upload_section_frame, selectmode=tk.MULTIPLE, height=10, width=70)
+        file_listbox.grid(row=2, column=0)
+        self.file_listbox = file_listbox
+
+        add_images_button = tk.Button(upload_section_frame, text="Add Images to Upload", command=self.add_images, font=("Arial", 12), padx=5, pady=10, fg="white", bg="gray")
+        add_images_button.grid(row=3,column=0, sticky=tk.W)
+        add_images_button.place(x = 220, y= 288)
+
         self.pending_count_var = tk.StringVar()
         self.pending_count_var.set(f"Upload {len(pending_uploads)} Pending Images")
 
         upload_pending_button = tk.Button(upload_section_frame,textvariable=self.pending_count_var, font=("Arial", 12), padx=5, pady=10, command=self.upload_pending, fg="white", bg="gray")
-        upload_pending_button.grid(row=2, sticky=tk.W)
+        upload_pending_button.grid(row=3,column=0, sticky=tk.W)
 
         # Create a scrolled Text widget with a fixed size
-        console_text = scrolledtext.ScrolledText(self, wrap=tk.WORD, height=10, width=70)
+        console_text = scrolledtext.ScrolledText(self, wrap=tk.WORD, height=10, width=100)
         console_text.pack()
 
         # Redirect sys.stdout to the Text widget
@@ -203,12 +212,15 @@ class MyGUI(tk.Tk):
 
     def upload_pending(self):
         while pending_uploads:  # Make a copy of the list to avoid modifying it while iterating
-            image_path = pending_uploads.pop(0)  # Remove the uploaded image path
+            image_path = pending_uploads.pop(0)
             upload_image(image_path)
-
+        self.file_listbox.delete(0, tk.END)
         self.update_pending_count()
 
     def update_pending_count(self):
+        for file_path in pending_uploads:
+            file_name = os.path.basename(file_path)
+            self.file_listbox.insert(tk.END, file_name)
         self.pending_count_var.set(f"Upload {len(pending_uploads)} Pending Images")
     
     def browse_dir(self):
@@ -243,6 +255,15 @@ class MyGUI(tk.Tk):
         print(f"Auto Upload: {self.auto_upload_var.get()}")
         for image_path in pending_uploads:
             upload_image(image_path)
+    
+    def add_images(self):
+        file_paths = fd.askopenfilenames(title="Select Images to Upload", filetypes=(("Image files", "*.png *.jpg *.jpeg *.gif"), ("All files", "*.*")))
+
+        for file_path in file_paths:
+            pending_uploads.append(file_path)
+            file_name = os.path.basename(file_path)
+            print(f"Added {file_name} to Pending Uploads")
+        self.update_pending_count()
     
 
 class ImageHandler(FileSystemEventHandler):
